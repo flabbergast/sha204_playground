@@ -3,7 +3,7 @@
 ## Installation / usage
 
 Copy the `avr/SHA204` library to your Arduino IDE's `libraries` folder,
-and copy the sketch `sha204_playground_arduino` to your sketchbook.
+and copy the sketch `sha204_playground.ino` to your sketchbook.
 
 Make the modifications to the library file
 `SHA204/SHA204SWI_hardware_config.h` to match your hardware setup (i.e.
@@ -39,6 +39,11 @@ Alternatively (depending on the functionality required), you can use the
 The firmware supports a "binary mode", for use with scripts. For a
 demonstration on how this is done, have a look at the python script
 `talk_to_sha204.py`.
+
+## atsha204_simple_example.ino
+
+This is an adaptation of the simple example for ATSHA204 that came with
+Sparkfun's sha204 library.
 
 ## License
 
