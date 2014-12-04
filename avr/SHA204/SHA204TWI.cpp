@@ -10,6 +10,7 @@
 #include "SHA204ReturnCodes.h"
 #include "SHA204Definitions.h"
 #include "SHA204TWI.h"
+#include "i2clib/i2c_master.h"
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
@@ -22,66 +23,82 @@ uint16_t SHA204TWI::SHA204_RESPONSE_TIMEOUT() {
 SHA204TWI::SHA204TWI() {
 }
 
-// power up (powered from appropriate pin)
+// power up and initialise i2c
 void SHA204TWI::power_up(void) {
   S_POWER_UP;
+  #if (defined(__AVR_ATxmega128A3U__)) || (defined(__AVR_ATxmega128A4U__))
+  i2c_init(I2C_BAUD_FROM_FREQ(400000));
+  #else // assuming AVR8
+  i2c_init(I2C_BIT_PRESCALE_1, I2C_BITLENGTH_FROM_FREQ(1, 400000));
+  #endif
 }
 
 /* TWI functions */
 
 uint8_t SHA204TWI::chip_wakeup() {
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
+  uint8_t sda_ddr_state = SHA204_SDA_DDR; // save pin config
+#elif defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
+  uint8_t sda_port_state = SHA204_SDA_PORT.DIR; // save pin config
+#endif
   SDA_PIN_DIR_OUT;
   SDA_PIN_LOW;
   _delay_us(SHA204_WAKEUP_PULSE_WIDTH);
   SDA_PIN_HIGH;
   _delay_ms(SHA204_WAKEUP_DELAY);
-  SDA_PIN_DIR_IN;
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
+  SHA204_SDA_DDR = sda_ddr_state;
+#elif defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
+  SHA204_SDA_PORT.DIR = sda_port_state; // save pin config
+#endif
 
   return SHA204_SUCCESS;
 }
 
 uint8_t SHA204TWI::sleep() {
-  return send_byte(SHA204_SWI_FLAG_SLEEP);
+  return send_byte(SHA204_TWI_SLEEP_CMD);
 }
 
 uint8_t SHA204TWI::idle() {
-  return send_byte(SHA204_SWI_FLAG_IDLE);
+  return send_byte(SHA204_TWI_IDLE_CMD);
+}
+
+uint8_t SHA204TWI::resync(uint8_t size, uint8_t *response) {
+  // Try to re-synchronize without sending a Wake token
+  // (step 1 of the re-synchronization process).
+  _delay_ms(SHA204_SYNC_TIMEOUT);
+  uint8_t ret_code = receive_response(size, response);
+  if (ret_code == SHA204_SUCCESS)
+    return ret_code;
+
+  // We lost communication. Send a Wake pulse and try
+  // to receive a response (steps 2 and 3 of the
+  // re-synchronization process).
+  (void) sleep();
+  ret_code = wakeup(response);
+
+  // Translate a return value of success into one
+  // that indicates that the device had to be woken up
+  // and might have lost its TempKey.
+  return (ret_code == SHA204_SUCCESS ? SHA204_RESYNC_WITH_WAKEUP : ret_code);
 }
 
 uint8_t SHA204TWI::send_bytes(uint8_t count, uint8_t *buffer) {
-  uint8_t i, bit_mask;
+  uint8_t i;
 
-  // Disable interrupts while sending.
-  cli();
-
-  S_PIN_DIR_OUT;
-
-  // Wait turn around time.
-  _delay_us(RX_TX_DELAY);
-
-  for (i = 0; i < count; i++) {
-    for (bit_mask = 1; bit_mask > 0; bit_mask <<= 1) {
-      if (bit_mask & buffer[i]) {
-        S_PIN_LOW;
-        _delay_us(BIT_DELAY);  //BIT_DELAY_1;
-        S_PIN_HIGH;
-        _delay_us(7*BIT_DELAY);  //BIT_DELAY_7;
-      } else {
-        // Send a zero bit.
-        S_PIN_LOW;
-        _delay_us(BIT_DELAY);  //BIT_DELAY_1;
-        S_PIN_HIGH;
-        _delay_us(BIT_DELAY);  //BIT_DELAY_1;
-        S_PIN_LOW;
-        _delay_us(BIT_DELAY);  //BIT_DELAY_1;
-        S_PIN_HIGH;
-        _delay_us(5*BIT_DELAY);  //BIT_DELAY_5;
+  if(i2c_start(SHA204_TWI_WR, SHA204_TWI_TIMEOUT_MS) == I2C_ERROR_NoError) {
+    for(i=0; i<count; i++) {
+      if(!i2c_write(buffer[i])) {
+        i2c_stop();
+        return TWI_FUNCTION_RETCODE_TX_FAIL;
       }
-      _delay_us(2); // since 8*BIT_DELAY < 37 us (datasheet / Table 7-3)
     }
+    i2c_stop();
+    return TWI_FUNCTION_RETCODE_SUCCESS;
   }
-  sei();  // enable_interrupts();
-  return SWI_FUNCTION_RETCODE_SUCCESS;
+
+  i2c_stop();
+  return TWI_FUNCTION_RETCODE_TIMEOUT;
 }
 
 uint8_t SHA204TWI::send_byte(uint8_t value) {
@@ -89,95 +106,24 @@ uint8_t SHA204TWI::send_byte(uint8_t value) {
 }
 
 uint8_t SHA204TWI::receive_bytes(uint8_t count, uint8_t *buffer)  {
-  uint8_t status = SWI_FUNCTION_RETCODE_SUCCESS;
   uint8_t i;
-  uint8_t bit_mask;
-  uint8_t pulse_count;
-  uint16_t timeout_count;
 
-  // Disable interrupts while receiving.
-  cli();
-
-  // Configure signal pin as input.
-  S_PIN_DIR_IN;
-
-  // Receive bits and store in buffer.
-  for (i = 0; i < count; i++) {
-    for (bit_mask = 1; bit_mask > 0; bit_mask <<= 1) {
-      pulse_count = 0;
-
-      // Make sure that the variable below is big enough.
-      // Change it to uint16_t if 255 is too small, but be aware that
-      // the loop resolution decreases on an 8-bit controller in that case.
-      timeout_count = START_PULSE_TIME_OUT;
-
-      // Detect start bit.
-      while (--timeout_count > 0) {
-        // Wait for falling edge.
-        if ((S_PIN_IS_HIGH) == 0)
-          break;
+  if(i2c_start(SHA204_TWI_RE, SHA204_TWI_TIMEOUT_MS) == I2C_ERROR_NoError) {
+    for(i=0; i<count-1; i++) {
+      if(!i2c_read(buffer+i, false)) {
+        i2c_stop();
+        return TWI_FUNCTION_RETCODE_RX_FAIL;
       }
-
-      if (timeout_count == 0) {
-        status = SWI_FUNCTION_RETCODE_TIMEOUT;
-        break;
-      }
-
-      do {
-        // Wait for rising edge.
-        if (S_PIN_IS_HIGH) {
-          // For an Atmel microcontroller this might be faster than "pulse_count++".
-          pulse_count = 1;
-          break;
-        }
-      } while (--timeout_count > 0);
-
-      if (pulse_count == 0) {
-        status = SWI_FUNCTION_RETCODE_TIMEOUT;
-        break;
-      }
-
-      // Trying to measure the time of start bit and calculating the timeout
-      // for zero bit detection is not accurate enough for an 8 MHz 8-bit CPU.
-      // (NB by flabbergast: running now on 32MHz XMEGA. so maybe...)
-      // So let's just wait the maximum time for the falling edge of a zero bit
-      // to arrive after we have detected the rising edge of the start bit.
-      timeout_count = ZERO_PULSE_TIME_OUT;
-
-      // Detect possible edge indicating zero bit.
-      do {
-        if ((S_PIN_IS_HIGH) == 0) {
-          // For an Atmel microcontroller this might be faster than "pulse_count++".
-          pulse_count = 2;
-          break;
-        }
-      } while (--timeout_count > 0);
-
-      // Wait for rising edge of zero pulse before returning. Otherwise we might interpret
-      // its rising edge as the next start pulse.
-      if (pulse_count == 2) {
-        do {
-          if (S_PIN_IS_HIGH)
-            break;
-        } while (timeout_count-- > 0);
-      }
-
-      // Update byte at current buffer index.
-      else
-        buffer[i] |= bit_mask;  // received "one" bit
     }
-
-    if (status != SWI_FUNCTION_RETCODE_SUCCESS)
-      break;
+    if(!ic2_read(buffer+count-1,true)) {
+      i2c_stop();
+      return TWI_FUNCTION_RETCODE_RX_FAIL;
+    }
+    i2c_stop();
+    return TWI_FUNCTION_RETCODE_SUCCESS;
   }
-  sei(); // enable_interrupts();
-
-  if (status == SWI_FUNCTION_RETCODE_TIMEOUT) {
-    if (i > 0)
-    // Indicate that we timed out after having received at least one byte.
-    status = SWI_FUNCTION_RETCODE_RX_FAIL;
-  }
-  return status;
+  i2c_stop();
+  return TWI_FUNCTION_RETCODE_TIMEOUT;
 }
 
 uint8_t SHA204TWI::receive_response(uint8_t size, uint8_t *response) {
@@ -188,10 +134,8 @@ uint8_t SHA204TWI::receive_response(uint8_t size, uint8_t *response) {
   for (i = 0; i < size; i++)
     response[i] = 0;
 
-  (void) send_byte(SHA204_SWI_FLAG_TX);
-
   ret_code = receive_bytes(size, response);
-  if (ret_code == SWI_FUNCTION_RETCODE_SUCCESS || ret_code == SWI_FUNCTION_RETCODE_RX_FAIL) {
+  if (ret_code == TWI_FUNCTION_RETCODE_SUCCESS || ret_code == TWI_FUNCTION_RETCODE_RX_FAIL) {
     count_byte = response[SHA204_BUFFER_POS_COUNT];
     if ((count_byte < SHA204_RSP_SIZE_MIN) || (count_byte > size))
       return SHA204_INVALID_SIZE;
@@ -202,7 +146,7 @@ uint8_t SHA204TWI::receive_response(uint8_t size, uint8_t *response) {
   // Translate error so that the Communication layer
   // can distinguish between a real error or the
   // device being busy executing a command.
-  if (ret_code == SWI_FUNCTION_RETCODE_TIMEOUT)
+  if (ret_code == TWI_FUNCTION_RETCODE_TIMEOUT)
     return SHA204_RX_NO_RESPONSE;
   else
     return SHA204_RX_FAIL;
