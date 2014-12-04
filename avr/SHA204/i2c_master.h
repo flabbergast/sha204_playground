@@ -12,14 +12,28 @@
 // hardware config
 // can use I2C_CONFIGURE_PINS macro to enable internal pull-ups
 #if defined(__AVR_ATxmega128A3U__)
-  #define I2CPORT TWIE
-  #define I2C_CONFIGURE_PINS PORTE.DIRSET &= ~0b11
+  #define I2C_TWI_INTERFACE TWIE
+  #define I2C_TWI_PORT PORTE
+  #define I2C_SDA_BIT (1<<0)
+  #define I2C_SCL_BIT (1<<1)
+  #define I2C_CONFIGURE_PINS I2C_TWI_PORT.DIRSET &= ~(I2C_SDA_BIT|I2C_SCL_BIT)
 #elif defined(__AVR_ATxmega128A4U__)
-  #define I2CPORT TWIC
-  #define I2C_CONFIGURE_PINS PORTC.DIRSET &= ~0b11
+  #define I2C_TWI_INTERFACE TWIC
+  #define I2C_TWI_PORT PORTC
+  #define I2C_SDA_BIT (1<<0)
+  #define I2C_SCL_BIT (1<<1)
+  #define I2C_CONFIGURE_PINS I2C_TWI_PORT.DIRSET &= ~(I2C_SDA_BIT|I2C_SCL_BIT)
 #elif defined(__AVR_ATmega32U4__)
-  #define I2C_CONFIGURE_PINS PORTD |= 0b11
+  #define I2C_TWI_PORT PORTD
+  #define I2C_TWI_DDR DDRD
+  #define I2C_SDA_BIT (1<<1)
+  #define I2C_SCL_BIT (1<<0)
+  #define I2C_CONFIGURE_PINS // nothing
 #elif defined(__AVR_ATmega328P__)
+  #define I2C_TWI_PORT PORTC
+  #define I2C_TWI_DDR DDRC
+  #define I2C_SDA_BIT (1<<4)
+  #define I2C_SCL_BIT (1<<5)
   #define I2C_CONFIGURE_PINS // nothing
 #else
   #error "Configure your hardware I2C port!"

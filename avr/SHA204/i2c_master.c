@@ -17,29 +17,29 @@
 
 void i2c_init(const uint8_t baud) {
   I2C_CONFIGURE_PINS;
-  I2CPORT.CTRL   = 0x00;
-  I2CPORT.MASTER.BAUD   = baud;
-  I2CPORT.MASTER.CTRLA  = TWI_MASTER_ENABLE_bm;
-  I2CPORT.MASTER.CTRLB  = 0;
-  I2CPORT.MASTER.STATUS = TWI_MASTER_BUSSTATE_IDLE_gc;
+  I2C_TWI_INTERFACE.CTRL   = 0x00;
+  I2C_TWI_INTERFACE.MASTER.BAUD   = baud;
+  I2C_TWI_INTERFACE.MASTER.CTRLA  = TWI_MASTER_ENABLE_bm;
+  I2C_TWI_INTERFACE.MASTER.CTRLB  = 0;
+  I2C_TWI_INTERFACE.MASTER.STATUS = TWI_MASTER_BUSSTATE_IDLE_gc;
 }
 
 void i2c_disable(void) {
-  I2CPORT.MASTER.CTRLA &= ~TWI_MASTER_ENABLE_bm;
+  I2C_TWI_INTERFACE.MASTER.CTRLA &= ~TWI_MASTER_ENABLE_bm;
 }
 
 uint8_t i2c_start(const uint8_t address, const uint8_t timeout) { // timeout in ms
   uint16_t timeout_remaining;
 
   // issue a START condition
-  I2CPORT.MASTER.ADDR = address;
+  I2C_TWI_INTERFACE.MASTER.ADDR = address;
 
   timeout_remaining = (timeout * 100);
   while (timeout_remaining) {
-    uint8_t status = I2CPORT.MASTER.STATUS;
+    uint8_t status = I2C_TWI_INTERFACE.MASTER.STATUS;
 
     if ((status & (TWI_MASTER_WIF_bm | TWI_MASTER_ARBLOST_bm)) == (TWI_MASTER_WIF_bm | TWI_MASTER_ARBLOST_bm)) { // arbitration lost
-      I2CPORT.MASTER.ADDR = address; // repeat the START condition
+      I2C_TWI_INTERFACE.MASTER.ADDR = address; // repeat the START condition
     } else if ((status & (TWI_MASTER_WIF_bm | TWI_MASTER_RXACK_bm)) == (TWI_MASTER_WIF_bm | TWI_MASTER_RXACK_bm)) { // got a NACK from slave
       i2c_stop();
       return I2C_ERROR_SlaveResponseTimeout;
@@ -52,7 +52,7 @@ uint8_t i2c_start(const uint8_t address, const uint8_t timeout) { // timeout in 
   }
 
   if (!(timeout_remaining)) {
-    if (I2CPORT.MASTER.STATUS & TWI_MASTER_CLKHOLD_bm) { // ran out of time and we're still holding SCL low
+    if (I2C_TWI_INTERFACE.MASTER.STATUS & TWI_MASTER_CLKHOLD_bm) { // ran out of time and we're still holding SCL low
       i2c_stop();
     }
   }
@@ -61,36 +61,32 @@ uint8_t i2c_start(const uint8_t address, const uint8_t timeout) { // timeout in 
 }
 
 void i2c_stop(void) {
-  I2CPORT.MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
+  I2C_TWI_INTERFACE.MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
 }
 
 bool i2c_write(const uint8_t byte) {
-  I2CPORT.MASTER.DATA = byte; // transmit byte
+  I2C_TWI_INTERFACE.MASTER.DATA = byte; // transmit byte
 
-  while (!(I2CPORT.MASTER.STATUS & TWI_MASTER_WIF_bm)); // wait for transmit to end
+  while (!(I2C_TWI_INTERFACE.MASTER.STATUS & TWI_MASTER_WIF_bm)); // wait for transmit to end
 
-  return (I2CPORT.MASTER.STATUS & TWI_MASTER_WIF_bm) && !(I2CPORT.MASTER.STATUS & TWI_MASTER_RXACK_bm); // return true if ACKed
+  return (I2C_TWI_INTERFACE.MASTER.STATUS & TWI_MASTER_WIF_bm) && !(I2C_TWI_INTERFACE.MASTER.STATUS & TWI_MASTER_RXACK_bm); // return true if ACKed
 }
 
 bool i2c_read(uint8_t* const byte_ptr, const bool last) {
-  if ((I2CPORT.MASTER.STATUS & (TWI_MASTER_BUSERR_bm | TWI_MASTER_ARBLOST_bm)) == (TWI_MASTER_BUSERR_bm | TWI_MASTER_ARBLOST_bm)) { // bus error or arbitration lost
+  if ((I2C_TWI_INTERFACE.MASTER.STATUS & (TWI_MASTER_BUSERR_bm | TWI_MASTER_ARBLOST_bm)) == (TWI_MASTER_BUSERR_bm | TWI_MASTER_ARBLOST_bm)) { // bus error or arbitration lost
     return false;
   }
 
-  while (!(I2CPORT.MASTER.STATUS & TWI_MASTER_RIF_bm)); // wait until we receive byte
+  while (!(I2C_TWI_INTERFACE.MASTER.STATUS & TWI_MASTER_RIF_bm)); // wait until we receive byte
 
-  *byte_ptr = I2CPORT.MASTER.DATA; // extract the received byte
+  *byte_ptr = I2C_TWI_INTERFACE.MASTER.DATA; // extract the received byte
 
   if (last) // NACK or ACK?
-    I2CPORT.MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
+    I2C_TWI_INTERFACE.MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
   else
-    I2CPORT.MASTER.CTRLC = TWI_MASTER_CMD_RECVTRANS_gc;
+    I2C_TWI_INTERFACE.MASTER.CTRLC = TWI_MASTER_CMD_RECVTRANS_gc;
 
   return true;
-}
-
-void i2c_reset(void) {
-  // TODO
 }
 
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
@@ -194,3 +190,52 @@ bool i2c_read(uint8_t* const byte_ptr, const bool last) {
 }
 
 #endif
+
+void i2c_reset(void) {
+  #define PAUSE _delay_us(5) // approximately 100kHz speed
+#if defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
+  #define SDA_GO_HIGH I2C_TWI_PORT.OUTSET = I2C_SDA_BIT
+  #define SDA_GO_LOW  I2C_TWI_PORT.OUTCLR = I2C_SDA_BIT
+  #define SCL_GO_HIGH I2C_TWI_PORT.OUTSET = I2C_SCL_BIT
+  #define SCL_GO_HIGH I2C_TWI_PORT.OUTCLR = I2C_SCL_BIT
+  uint8_t _baud = I2C_TWI_INTERFACE.MASTER.BAUD; // save the original baud setting
+  i2c_disable();
+  uint8_t twi_dir_state = I2C_TWI_PORT.DIR; // save the state of pins
+  I2C_TWI_PORT.DIRSET = (I2C_SDA_BIT|I2C_SCL_BIT); // make SDA and SCL outputs
+#elif defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
+  #define SDA_GO_HIGH I2C_TWI_PORT |= I2C_SDA_BIT
+  #define SDA_GO_LOW  I2C_TWI_PORT &= ~I2C_SDA_BIT
+  #define SCL_GO_HIGH I2C_TWI_PORT |= I2C_SCL_BIT
+  #define SCL_GO_LOW  I2C_TWI_PORT &= ~I2C_SCL_BIT
+  uint8_t _twsr = TWSR; // save the I2C settings
+  uint8_t _twbr = TWBR; // TODO: apply prescale and bitlength masks
+  i2c_disable(); // disable TWI module
+  uint8_t twi_ddr_state = I2C_TWI_DDR; // save the state of pins
+  I2C_TWI_DDR |= (I2C_SDA_BIT|I2C_SCL_BIT); // make SDA and SCL outputs
+#endif
+  // make both high
+  SDA_GO_HIGH;
+  SCL_GO_HIGH;
+  PAUSE;
+  // START condition
+  SDA_GO_LOW; PAUSE;
+  SCL_GO_LOW; PAUSE;
+  SDA_GO_HIGH; PAUSE;
+  // 9 cycles of SCL while SDA is high
+  for(uint8_t i=0; i<9; i++) {
+    SCL_GO_HIGH; PAUSE; PAUSE;
+    SCL_GO_LOW; PAUSE; PAUSE;
+  }
+  // another START condition
+  SCL_GO_HIGH; PAUSE;
+  SDA_GO_LOW; PAUSE; PAUSE;
+  // STOP condition
+  SDA_GO_HIGH; PAUSE;
+#if defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
+  I2C_TWI_PORT.DIR = twi_dir_state; // restore the state of pins
+  i2c_init(_baud);
+#elif defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
+  I2C_TWI_DDR = twi_ddr_state; // restore the state of pins
+  i2c_init(_twsr, _twbr);
+#endif
+}
