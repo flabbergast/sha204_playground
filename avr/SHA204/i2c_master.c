@@ -24,8 +24,12 @@ void i2c_init(const uint8_t baud) {
   I2C_TWI_INTERFACE.MASTER.STATUS = TWI_MASTER_BUSSTATE_IDLE_gc;
 }
 
-void i2c_disable(void) {
+void i2c_off(void) {
   I2C_TWI_INTERFACE.MASTER.CTRLA &= ~TWI_MASTER_ENABLE_bm;
+}
+
+void i2c_on(void) {
+  I2C_TWI_INTERFACE.MASTER.CTRLA  = TWI_MASTER_ENABLE_bm;
 }
 
 uint8_t i2c_start(const uint8_t address, const uint8_t timeout) { // timeout in ms
@@ -97,8 +101,11 @@ void i2c_init(const uint8_t prescale, const uint8_t bitlength) {
   TWBR  = bitlength;
 }
 
-void i2c_disable(void) {
+void i2c_off(void) {
   TWCR &= ~(1 << TWEN);
+}
+void i2c_on(void) {
+  TWCR |= (1 << TWEN);
 }
 
 uint8_t i2c_start(const uint8_t address, const uint8_t timeout) { // timeout in ms
@@ -192,25 +199,19 @@ bool i2c_read(uint8_t* const byte_ptr, const bool last) {
 #endif
 
 void i2c_reset(void) {
+  i2c_off(); // disable I2C
   #define PAUSE _delay_us(5) // approximately 100kHz speed
 #if defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
   #define SDA_GO_HIGH I2C_TWI_PORT.OUTSET = I2C_SDA_BIT
   #define SDA_GO_LOW  I2C_TWI_PORT.OUTCLR = I2C_SDA_BIT
   #define SCL_GO_HIGH I2C_TWI_PORT.OUTSET = I2C_SCL_BIT
-  #define SCL_GO_HIGH I2C_TWI_PORT.OUTCLR = I2C_SCL_BIT
-  uint8_t _baud = I2C_TWI_INTERFACE.MASTER.BAUD; // save the original baud setting
-  i2c_disable();
-  uint8_t twi_dir_state = I2C_TWI_PORT.DIR; // save the state of pins
+  #define SCL_GO_LOW  I2C_TWI_PORT.OUTCLR = I2C_SCL_BIT
   I2C_TWI_PORT.DIRSET = (I2C_SDA_BIT|I2C_SCL_BIT); // make SDA and SCL outputs
 #elif defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
   #define SDA_GO_HIGH I2C_TWI_PORT |= I2C_SDA_BIT
   #define SDA_GO_LOW  I2C_TWI_PORT &= ~I2C_SDA_BIT
   #define SCL_GO_HIGH I2C_TWI_PORT |= I2C_SCL_BIT
   #define SCL_GO_LOW  I2C_TWI_PORT &= ~I2C_SCL_BIT
-  uint8_t _twsr = TWSR; // save the I2C settings
-  uint8_t _twbr = TWBR; // TODO: apply prescale and bitlength masks
-  i2c_disable(); // disable TWI module
-  uint8_t twi_ddr_state = I2C_TWI_DDR; // save the state of pins
   I2C_TWI_DDR |= (I2C_SDA_BIT|I2C_SCL_BIT); // make SDA and SCL outputs
 #endif
   // make both high
@@ -231,11 +232,6 @@ void i2c_reset(void) {
   SDA_GO_LOW; PAUSE; PAUSE;
   // STOP condition
   SDA_GO_HIGH; PAUSE;
-#if defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
-  I2C_TWI_PORT.DIR = twi_dir_state; // restore the state of pins
-  i2c_init(_baud);
-#elif defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
-  I2C_TWI_DDR = twi_ddr_state; // restore the state of pins
-  i2c_init(_twsr, _twbr);
-#endif
+  // enable I2C back
+  i2c_on();
 }

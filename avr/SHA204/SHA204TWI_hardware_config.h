@@ -13,8 +13,8 @@
 // Note: pull-up on the SDA and SCL pins are assumed to exist (ie internal pullup is not used)
 
 #define SHA204_TWI_ADDRESS 0xC8
-#define SHA204_TWI_WR (SHA204_TWI_ADDRESS << 1) | I2C_WRITE
-#define SHA204_TWI_RE (SHA204_TWI_ADDRESS << 1) | I2C_READ
+#define SHA204_TWI_WR SHA204_TWI_ADDRESS | I2C_WRITE
+#define SHA204_TWI_RE SHA204_TWI_ADDRESS | I2C_READ
 
 /*************************\
  **** FOR XMEGA CHIPS ****

@@ -18,7 +18,7 @@
 #define TWI_FUNCTION_RETCODE_SUCCESS     ((uint8_t) 0x00) //!< Communication with device succeeded.
 #define TWI_FUNCTION_RETCODE_TIMEOUT     ((uint8_t) 0xF1) //!< Communication timed out.
 #define TWI_FUNCTION_RETCODE_RX_FAIL     ((uint8_t) 0xF9) //!< Communication failed after at least one byte was received.
-#define TWI_FUNCTION_RETCODE_TX_FAIL     ((uint8_t) 0xF8) //!< Communication failed when sending data via I2C.
+#define TWI_FUNCTION_RETCODE_TX_FAIL     ((uint8_t) 0xFA) //!< Communication failed when sending data via I2C.
 
 // timeout for I2C communication
 #define SHA204_TWI_TIMEOUT_MS 10
@@ -31,7 +31,7 @@
 
 class SHA204TWI : public SHA204 {
 private:
-  const static uint16_t SHA204_RESPONSE_TIMEOUT_VALUE = ((uint16_t) SWI_RECEIVE_TIME_OUT + SWI_US_PER_BYTE);  //! SWI response timeout is the sum of receive timeout and the time it takes to send the TX flag.
+  const static uint16_t SHA204_RESPONSE_TIMEOUT_VALUE = 0;
 
   uint16_t SHA204_RESPONSE_TIMEOUT();
   uint8_t receive_bytes(uint8_t count, uint8_t *buffer);
@@ -43,7 +43,7 @@ private:
 
 public:
   SHA204TWI(void);
-  void i2c_init(void);
+  void init_i2c(void);
   uint8_t sleep(void);
   uint8_t idle(void);
   uint8_t resync(uint8_t size, uint8_t *response);

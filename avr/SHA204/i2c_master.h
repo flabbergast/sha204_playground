@@ -9,6 +9,11 @@
 #ifndef I2C_MASTER_H
 #define I2C_MASTER_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // hardware config
 // can use I2C_CONFIGURE_PINS macro to enable internal pull-ups
 #if defined(__AVR_ATxmega128A3U__)
@@ -60,7 +65,6 @@ enum I2C_ErrorCodes_t
 };
 
 // function prototypes
-void i2c_disable(void);
 uint8_t i2c_start(const uint8_t address, const uint8_t timeout); // timeout in ms
 void i2c_stop(void);
 bool i2c_write(const uint8_t byte);
@@ -71,6 +75,8 @@ void i2c_init(const uint8_t baud); // speed is set differently on xmega
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
 void i2c_init(const uint8_t prescale, const uint8_t bitlength);
 #endif
+void i2c_off(void);
+void i2c_on(void); // like _init, but do not set speed, just enable the TWI module
 
 // architecture specific
 #if defined(__AVR_ATxmega128A4U__) || defined(__AVR_ATxmega128A3U__)
@@ -82,6 +88,10 @@ void i2c_init(const uint8_t prescale, const uint8_t bitlength);
   #define I2C_BIT_PRESCALE_16      ((1 << TWPS1) | (0 << TWPS0))
   #define I2C_BIT_PRESCALE_64      ((1 << TWPS1) | (1 << TWPS0))
   #define I2C_BITLENGTH_FROM_FREQ(Prescale, Frequency) ((((F_CPU / (Prescale)) / (Frequency)) - 16) / 2)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

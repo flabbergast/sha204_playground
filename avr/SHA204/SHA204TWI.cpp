@@ -10,9 +10,9 @@
 #include "SHA204ReturnCodes.h"
 #include "SHA204Definitions.h"
 #include "SHA204TWI.h"
-#include "i2c_master.h"
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include "i2c_master.h"
 
 uint16_t SHA204TWI::SHA204_RESPONSE_TIMEOUT() {
   return SHA204_RESPONSE_TIMEOUT_VALUE;
@@ -24,7 +24,7 @@ SHA204TWI::SHA204TWI() {
 }
 
 // initialise i2c
-void SHA204TWI::i2c_init(void) {
+void SHA204TWI::init_i2c(void) {
   #if (defined(__AVR_ATxmega128A3U__)) || (defined(__AVR_ATxmega128A4U__))
   i2c_init(I2C_BAUD_FROM_FREQ(400000));
   #else // assuming AVR8
@@ -35,21 +35,14 @@ void SHA204TWI::i2c_init(void) {
 /* TWI functions */
 
 uint8_t SHA204TWI::chip_wakeup() {
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
-  uint8_t sda_ddr_state = SHA204_SDA_DDR; // save pin config
-#elif defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
-  uint8_t sda_port_state = SHA204_SDA_PORT.DIR; // save pin config
-#endif
+  i2c_off(); // disable I2C
+  // pull SDA down manually
   SDA_PIN_DIR_OUT;
   SDA_PIN_LOW;
   _delay_us(SHA204_WAKEUP_PULSE_WIDTH);
   SDA_PIN_HIGH;
   _delay_ms(SHA204_WAKEUP_DELAY);
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
-  SHA204_SDA_DDR = sda_ddr_state;
-#elif defined(__AVR_ATxmega128A3U__) || defined(__AVR_ATxmega128A4U__)
-  SHA204_SDA_PORT.DIR = sda_port_state; // save pin config
-#endif
+  i2c_on(); // enable I2C back
 
   return SHA204_SUCCESS;
 }
@@ -66,7 +59,6 @@ uint8_t SHA204TWI::resync(uint8_t size, uint8_t *response) {
   uint8_t ret_code;
   // Try to software reset the I2C bus
   // (step 1 of the re-synchronization process).
-  _delay_ms(SHA204_SYNC_TIMEOUT);
   i2c_reset();
   ret_code = send_byte(SHA204_TWI_RESET_ADDRESS_COUNTER_CMD);
   if(ret_code == TWI_FUNCTION_RETCODE_SUCCESS)
@@ -120,7 +112,7 @@ uint8_t SHA204TWI::receive_bytes(uint8_t count, uint8_t *buffer)  {
         return TWI_FUNCTION_RETCODE_RX_FAIL;
       }
     }
-    if(!ic2_read(buffer+count-1,true)) {
+    if(!i2c_read(buffer+count-1,true)) {
       i2c_stop();
       return TWI_FUNCTION_RETCODE_RX_FAIL;
     }
@@ -158,9 +150,21 @@ uint8_t SHA204TWI::receive_response(uint8_t size, uint8_t *response) {
 }
 
 uint8_t SHA204TWI::send_command(uint8_t count, uint8_t * command) {
-  uint8_t ret_code = send_byte(SHA204_SWI_FLAG_CMD);
-  if (ret_code != SWI_FUNCTION_RETCODE_SUCCESS)
-    return SHA204_COMM_FAIL;
+  uint8_t i;
 
-  return send_bytes(count, command);
+  if(i2c_start(SHA204_TWI_WR, SHA204_TWI_TIMEOUT_MS) == I2C_ERROR_NoError) {
+    if(i2c_write(SHA204_TWI_COMMAND_CMD)) {
+      for(i=0; i<count; i++) {
+        if(!i2c_write(command[i])) {
+          i2c_stop();
+          return SHA204_COMM_FAIL;
+        }
+      }
+      i2c_stop();
+      return SHA204_SUCCESS;
+    }
+  }
+
+  i2c_stop();
+  return SHA204_COMM_FAIL;
 }
