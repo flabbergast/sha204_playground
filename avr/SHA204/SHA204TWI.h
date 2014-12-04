@@ -43,9 +43,9 @@ private:
 
 public:
   SHA204TWI(void);
-  void    power_up();
-  uint8_t sleep();
-  uint8_t idle();
+  void i2c_init(void);
+  uint8_t sleep(void);
+  uint8_t idle(void);
   uint8_t resync(uint8_t size, uint8_t *response);
 };
 

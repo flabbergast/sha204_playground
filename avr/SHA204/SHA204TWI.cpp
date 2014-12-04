@@ -10,7 +10,7 @@
 #include "SHA204ReturnCodes.h"
 #include "SHA204Definitions.h"
 #include "SHA204TWI.h"
-#include "i2clib/i2c_master.h"
+#include "i2c_master.h"
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
@@ -23,9 +23,8 @@ uint16_t SHA204TWI::SHA204_RESPONSE_TIMEOUT() {
 SHA204TWI::SHA204TWI() {
 }
 
-// power up and initialise i2c
-void SHA204TWI::power_up(void) {
-  S_POWER_UP;
+// initialise i2c
+void SHA204TWI::i2c_init(void) {
   #if (defined(__AVR_ATxmega128A3U__)) || (defined(__AVR_ATxmega128A4U__))
   i2c_init(I2C_BAUD_FROM_FREQ(400000));
   #else // assuming AVR8
@@ -64,10 +63,16 @@ uint8_t SHA204TWI::idle() {
 }
 
 uint8_t SHA204TWI::resync(uint8_t size, uint8_t *response) {
-  // Try to re-synchronize without sending a Wake token
+  uint8_t ret_code;
+  // Try to software reset the I2C bus
   // (step 1 of the re-synchronization process).
   _delay_ms(SHA204_SYNC_TIMEOUT);
-  uint8_t ret_code = receive_response(size, response);
+  i2c_reset();
+  ret_code = send_byte(SHA204_TWI_RESET_ADDRESS_COUNTER_CMD);
+  if(ret_code == TWI_FUNCTION_RETCODE_SUCCESS)
+    return SHA204_SUCCESS;
+
+  ret_code = receive_response(size, response);
   if (ret_code == SHA204_SUCCESS)
     return ret_code;
 

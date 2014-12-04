@@ -51,6 +51,7 @@ uint8_t i2c_start(const uint8_t address, const uint8_t timeout); // timeout in m
 void i2c_stop(void);
 bool i2c_write(const uint8_t byte);
 bool i2c_read(uint8_t* const byte_ptr, const bool last);
+void i2c_reset(void);
 #if defined(__AVR_ATxmega128A4U__) || defined(__AVR_ATxmega128A3U__)
 void i2c_init(const uint8_t baud); // speed is set differently on xmega
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)

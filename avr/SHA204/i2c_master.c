@@ -89,6 +89,10 @@ bool i2c_read(uint8_t* const byte_ptr, const bool last) {
   return true;
 }
 
+void i2c_reset(void) {
+  // TODO
+}
+
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
 
 void i2c_init(const uint8_t prescale, const uint8_t bitlength) {
