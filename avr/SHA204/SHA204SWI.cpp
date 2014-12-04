@@ -42,11 +42,6 @@ uint16_t SHA204SWI::SHA204_RESPONSE_TIMEOUT() {
 SHA204SWI::SHA204SWI() {
 }
 
-// power up (powered from appropriate pin)
-void SHA204SWI::power_up(void) {
-  S_POWER_UP;
-}
-
 /* SWI bit bang functions */
 
 uint8_t SHA204SWI::chip_wakeup() {
