@@ -8,7 +8,7 @@
  */
 
 // use I2C or single wire interface to ATSHA204?
-#define USE_I2C_INTERFACE 0
+#define USE_I2C_INTERFACE 1
 
 #include "LufaLayer.h"
 
@@ -107,7 +107,7 @@ int main(void)
   uint8_t r;
   uint8_t param1;
   uint16_t param2;
-  uint8_t data1[32];
+  uint8_t data1[64];
   uint8_t data2[32];
   uint8_t data3[14];
 
@@ -171,7 +171,7 @@ int main(void)
         else
           Wl("--- S ---");
         switch(c) { // yes, code like this sucks
-          case 's': // serial number
+          case 'i': // serial number
             Wl("Request serial number.");
             sha204.wakeup(rx_buffer);
             r = sha204.serialNumber(rx_buffer);
@@ -448,6 +448,29 @@ int main(void)
             print_return_code(r);
             print_received_from_sha(rx_buffer);
             break;
+          case 's': // SHA
+            Wl("Compute SHA256 of 64 bytes of data.");
+            Wl("Enter message (64 bytes; default 0):");
+            memset((void *)data1, 0, 64);
+            get_bytes_serial(data1, 64);
+            param1=0;
+            print_execute_params(SHA204_SHA, param1);
+            Wl("0x0000");
+            print_executing();
+            sha204.wakeup(rx_buffer);
+            r = sha204.sha(tx_buffer, rx_buffer, param1, NULL);
+            print_return_code(r);
+            print_received_from_sha(rx_buffer);
+            param1 = 1;
+            print_execute_params(SHA204_SHA, param1);
+            W("0x0000 data1 ");
+            hexprint(data1, 64);
+            print_executing();
+            r = sha204.sha(tx_buffer, rx_buffer, param1, data1);
+            if(idle) { sha204.idle(); } else { sha204.sleep(); }
+            print_return_code(r);
+            print_received_from_sha(rx_buffer);
+            break;
           case 'k': // wake
             Wl("Test waking up.");
             print_executing();
@@ -546,8 +569,8 @@ void hexprint_1bit(uint8_t b) {
 void print_help(void) {
   Wl("*** SHA204 playground [(c) 2014 flabbergast] ***\n\r");
   Wl("Raw commands: wa[k]e [c]heckMAC [d]erive_key dev_re[v]ision [g]en_dig [h]MAC");
-  Wl("              [m]ac [n]once [r]andom r[e]ad [w]rite [u]date_extra");
-  Wl("Processed commands: [s]erial c[o]nfig_zone");
+  Wl("              [m]ac [n]once [r]andom r[e]ad [w]rite [u]date_extra [s]ha");
+  Wl("Processed commands: ser[i]al c[o]nfig_zone");
   Wl("Playground config: [I]dle-or-sleep");
   Wl("'?' -> this help");
   Wl("Dangerous/one-time only! [L]ock\n\r");
