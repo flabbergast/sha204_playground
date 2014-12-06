@@ -12,7 +12,19 @@
  *  original code.
  */
 
-#include "SHA204SWI.h"
+// use I2C or single wire interface to ATSHA204?
+#define USE_I2C_INTERFACE 0
+// Configure the SDA pin for single wire interface in the library.
+// I2C uses the standard hardware I2C pins.
+
+#if (USE_I2C_INTERFACE)
+#include <SHA204TWI.h>
+#define SHA204CLASS SHA204TWI
+#else
+#include <SHA204SWI.h>
+#define SHA204CLASS SHA204SWI
+#endif
+
 #include "SHA204Definitions.h" // for constants and such
 #include "SHA204ReturnCodes.h" // want messages for return codes
 
@@ -27,7 +39,7 @@
 volatile uint8_t idle = 0;
 volatile uint8_t hexprint_separator = ' ';
 
-SHA204SWI sha204;
+SHA204CLASS sha204;
 
 
 /*************************************************************************
@@ -46,9 +58,9 @@ void print_execute_params(uint8_t opcode, uint8_t param1);
 void print_return_code(uint8_t code);
 
 void process_config(uint8_t *config);
-void sleep_or_idle(SHA204SWI *sha204);
+void sleep_or_idle(SHA204CLASS *sha204);
 uint8_t receive_serial_binary_transaction(uint8_t *buffer, uint8_t len);
-uint8_t binary_mode_transaction(uint8_t *data, uint8_t rxsize, uint8_t *rx_buffer, SHA204SWI *sha204);
+uint8_t binary_mode_transaction(uint8_t *data, uint8_t rxsize, uint8_t *rx_buffer, SHA204CLASS *sha204);
 #define BINARY_TRANSACTION_OK 0
 #define BINARY_TRANSACTION_RECEIVE_ERROR 1
 #define BINARY_TRANSACTION_PARAM_ERROR 2
@@ -68,7 +80,9 @@ uint16_t usb_serial_readline(char *buffer, const uint16_t buffer_size, const boo
 /* Setup */
 void setup(void)
 {
-  sha204.power_up();
+#if (USE_I2C_INTERFACE)
+  sha204.init_i2c();
+#endif
 
   /* Initialisation */
   Serial.begin(115200);
@@ -646,7 +660,7 @@ uint8_t receive_serial_binary_transaction(uint8_t *buffer, uint8_t len) {
   return BINARY_TRANSACTION_OK;
 }
 
-uint8_t binary_mode_transaction(uint8_t *data, uint8_t rxsize, uint8_t *rx_buffer, SHA204SWI *sha204) {
+uint8_t binary_mode_transaction(uint8_t *data, uint8_t rxsize, uint8_t *rx_buffer, SHA204CLASS *sha204) {
   uint8_t i = 0;
   uint8_t len;
   uint8_t idle;
