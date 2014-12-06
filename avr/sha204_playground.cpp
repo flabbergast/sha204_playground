@@ -109,6 +109,10 @@ int main(void)
 
   SHA204_POWER_UP;
 
+#if defined(SHA204_Library_TWI_h)
+  sha204.init_i2c();
+#endif
+
   /* Must throw away unused bytes from the host, or it will lock up while waiting for the device */
   usb_serial_flush_input();
 
@@ -596,7 +600,7 @@ void process_config(uint8_t *config) {
   hexprint(config+ADDRESS_RevNum,4);
   // I2C setup
   if(config[ADDRESS_I2CEN]&1) {
-    W("I2C enabled; Address: ");
+    W("I2C enabled; Address: 0x");
     hexprint_byte(config[ADDRESS_I2CADD]>>1);
     W("\n\r");
   } else {

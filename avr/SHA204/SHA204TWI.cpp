@@ -24,7 +24,7 @@ SHA204TWI::SHA204TWI() {
 }
 
 // initialise i2c
-void SHA204TWI::init_i2c(void) {
+void SHA204TWI::init_i2c(void) { // use 400kHz by default
   #if (defined(__AVR_ATxmega128A3U__)) || (defined(__AVR_ATxmega128A4U__))
   i2c_init(I2C_BAUD_FROM_FREQ(400000));
   #else // assuming AVR8

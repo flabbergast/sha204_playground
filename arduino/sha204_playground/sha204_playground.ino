@@ -538,7 +538,7 @@ void process_config(uint8_t *config) {
   hexprint(config+ADDRESS_RevNum,4);
   // I2C setup
   if(config[ADDRESS_I2CEN]&1) {
-    W("I2C enabled; Address: ");
+    W("I2C enabled; Address: 0x");
     hexprint_byte(config[ADDRESS_I2CADD]>>1);
     W("\n\r");
   } else {

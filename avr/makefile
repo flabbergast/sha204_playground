@@ -25,12 +25,12 @@ BOARD        = OLIMEX32U4
 F_CPU        = 16000000
 F_USB        = $(F_CPU)
 AVRDUDE_PROGRAMMER = avr109
-AVRDUDE_PORT = /dev/tty.usbmodemfd111
+AVRDUDE_PORT = /dev/tty.usbmodemfa131
 
 # Compile setting
 OPTIMIZATION = s
 TARGET       = sha204_playground
-SRC          = $(TARGET).cpp LufaLayer.c Descriptors.c Timer.c $(shell find "SHA204" -name "*.cpp") $(LUFA_SRC_USB) $(LUFA_SRC_USBCLASS)
+SRC          = $(TARGET).cpp LufaLayer.c Descriptors.c Timer.c $(shell find "SHA204" -name "*.cpp" -or -name "*.c") $(LUFA_SRC_USB) $(LUFA_SRC_USBCLASS)
 LUFA_PATH    = LUFA
 CC_FLAGS     = -DUSE_LUFA_CONFIG_HEADER -IConfig/
 LD_FLAGS     =

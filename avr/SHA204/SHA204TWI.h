@@ -11,9 +11,6 @@
 #include "SHA204.h"
 #include "SHA204TWI_hardware_config.h"
 
-#define SHA204_TWI_WAKE_DELAY twlo
-#define SHA204_TWI_WARMUP_DELAY twhi
-
 // TWI communication functions return codes
 #define TWI_FUNCTION_RETCODE_SUCCESS     ((uint8_t) 0x00) //!< Communication with device succeeded.
 #define TWI_FUNCTION_RETCODE_TIMEOUT     ((uint8_t) 0xF1) //!< Communication timed out.

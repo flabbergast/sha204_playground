@@ -26,7 +26,7 @@ limitations under the License.
 //#define SHA204_WAKEUP_PULSE_WIDTH    (uint8_t) (6.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5)	//! width of Wakeup pulse in 10 us units
 //#define SHA204_WAKEUP_DELAY          (uint8_t) (3.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5)	//! delay between Wakeup pulse and communication in ms
 #define SHA204_WAKEUP_PULSE_WIDTH    62 // us (Twlo)
-#define SHA204_WAKEUP_DELAY          2.5 // ms (Twhi)
+#define SHA204_WAKEUP_DELAY          2.7 // ms (Twhi)
 
 /* sha204_comm_marshaling.h */
 // command op-code definitions
