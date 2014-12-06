@@ -43,6 +43,7 @@ limitations under the License.
 #define SHA204_READ                     ((uint8_t) 0x02)       //!< Read command op-code
 #define SHA204_UPDATE_EXTRA             ((uint8_t) 0x20)       //!< UpdateExtra command op-code
 #define SHA204_WRITE                    ((uint8_t) 0x12)       //!< Write command op-code
+#define SHA204_SHA                      ((uint8_t) 0x47)       //!< SHA command op-code
 
 // packet size definitions
 #define SHA204_RSP_SIZE_VAL             ((uint8_t)  7)         //!< size of response packet containing four bytes of data
@@ -190,6 +191,15 @@ limitations under the License.
 #define WRITE_ZONE_MASK                 ((uint8_t) 0xC3)       //!< Write zone bits 2 to 5 are 0.
 #define WRITE_ZONE_WITH_MAC             ((uint8_t) 0x40)       //!< Write zone bit 6: write encrypted with MAC
 
+// SHA command definitions
+#define SHA_MODE_IDX                    SHA204_PARAM1_IDX      //!< SHA command index for mode
+#define SHA_PARAM2_IDX                  SHA204_PARAM2_IDX      //!< SHA command index for 2. parameter
+#define SHA_MESSAGE_IDX                 SHA204_DATA_IDX        //!< SHA command index for message to be hashed
+#define SHA_MESSAGE_SIZE                (64)                   //!< SHA command message size
+#define SHA_COUNT_SHORT                 SHA204_CMD_SIZE_MIN    //!< SHA command packet size for 20 bytes of data
+#define SHA_COUNT_LONG                  (71)                   //!< SHA command packet size for 32 bytes of data
+#define SHA_MODE_MASK                   ((uint8_t) 1)          //!< SHA mode bits 1 to 7 are 0. (INIT/COMPUTE)
+
 // Response size definitions
 #define CHECKMAC_RSP_SIZE               SHA204_RSP_SIZE_MIN    //!< response size of DeriveKey command
 #define DERIVE_KEY_RSP_SIZE             SHA204_RSP_SIZE_MIN    //!< response size of DeriveKey command
@@ -207,6 +217,8 @@ limitations under the License.
 #define TEMP_SENSE_RSP_SIZE             SHA204_RSP_SIZE_VAL    //!< response size of TempSense command returns 4 bytes
 #define UPDATE_RSP_SIZE                 SHA204_RSP_SIZE_MIN    //!< response size of UpdateExtra command
 #define WRITE_RSP_SIZE                  SHA204_RSP_SIZE_MIN    //!< response size of Write command
+#define SHA_RSP_SIZE_SHORT              SHA204_RSP_SIZE_MIN    //!< response size of SHA/init command (mode=0)
+#define SHA_RSP_SIZE_LONG               SHA204_RSP_SIZE_MAX    //!< response size of SHA/compute command (mode=1)
 
 // command timing definitions for minimum execution times (ms)
 #define CHECKMAC_DELAY                  ((uint8_t) (12.0 * CPU_CLOCK_DEVIATION_NEGATIVE - 0.5))
@@ -223,6 +235,7 @@ limitations under the License.
 #define TEMP_SENSE_DELAY                ((uint8_t) ( 4.0 * CPU_CLOCK_DEVIATION_NEGATIVE - 0.5))
 #define UPDATE_DELAY                    ((uint8_t) ( 4.0 * CPU_CLOCK_DEVIATION_NEGATIVE - 0.5))
 #define WRITE_DELAY                     ((uint8_t) ( 4.0 * CPU_CLOCK_DEVIATION_NEGATIVE - 0.5))
+#define SHA_DELAY                       ((uint8_t) (11.0 * CPU_CLOCK_DEVIATION_NEGATIVE - 0.5))
 
 // command timing definitions for maximum execution times (ms)
 #define CHECKMAC_EXEC_MAX                ((uint8_t) (38.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5))
@@ -239,6 +252,7 @@ limitations under the License.
 #define TEMP_SENSE_EXEC_MAX              ((uint8_t) (11.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5))
 #define UPDATE_EXEC_MAX                  ((uint8_t) ( 6.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5))
 #define WRITE_EXEC_MAX                   ((uint8_t) (42.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5))
+#define SHA_EXEC_MAX                     ((uint8_t) (22.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5))
 
 /* from sha204_comm.h */
 

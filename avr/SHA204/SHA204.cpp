@@ -509,6 +509,12 @@ uint8_t SHA204::check_parameters(uint8_t op_code, uint8_t param1, uint16_t param
         return SHA204_BAD_PARAM;
       break;
 
+    case SHA204_SHA:
+      if (((param1 & ~SHA_MODE_MASK) != 0)
+          || ((param1 & SHA_MODE_MASK) && (!data)))
+        return SHA204_BAD_PARAM;
+      break;
+
     default:
       // unknown op-code
       return SHA204_BAD_PARAM;
@@ -792,4 +798,32 @@ uint8_t SHA204::write(uint8_t *tx_buffer, uint8_t *rx_buffer,
 
   return send_and_receive(&tx_buffer[0], WRITE_RSP_SIZE, &rx_buffer[0],
         WRITE_DELAY, WRITE_EXEC_MAX - WRITE_DELAY);
+}
+
+uint8_t SHA204::sha(uint8_t *tx_buffer, uint8_t *rx_buffer,
+    uint8_t mode, uint8_t *message) {
+  uint8_t rx_size;
+  if (!tx_buffer || !rx_buffer || ((mode & ~SHA_MODE_MASK) != 0)
+        || ((mode & SHA_MODE_MASK) && !message))
+    return SHA204_BAD_PARAM;
+
+  tx_buffer[SHA204_OPCODE_IDX] = SHA204_SHA;
+  tx_buffer[SHA_MODE_IDX] = mode;
+
+  // 2. parameter is 0.
+  tx_buffer[SHA_PARAM2_IDX] =
+  tx_buffer[SHA_PARAM2_IDX + 1] = 0;
+
+  if (mode == SHA_MODE_MASK)
+  { // mode = compute
+    memcpy(&tx_buffer[SHA_MESSAGE_IDX], message, SHA_MESSAGE_SIZE);
+    tx_buffer[SHA204_COUNT_IDX] = SHA_COUNT_LONG;
+    rx_size = SHA_RSP_SIZE_LONG;
+  } else { // mode = init
+    tx_buffer[SHA204_COUNT_IDX] = SHA_COUNT_SHORT;
+    rx_size = SHA_RSP_SIZE_SHORT;
+  }
+
+  return send_and_receive(&tx_buffer[0], rx_size, &rx_buffer[0],
+        SHA_DELAY, SHA_EXEC_MAX - SHA_DELAY);
 }

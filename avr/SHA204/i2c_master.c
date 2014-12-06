@@ -223,7 +223,8 @@ void i2c_reset(void) {
   SCL_GO_LOW; PAUSE;
   SDA_GO_HIGH; PAUSE;
   // 9 cycles of SCL while SDA is high
-  for(uint8_t i=0; i<9; i++) {
+  uint8_t i;
+  for(i=0; i<9; i++) {
     SCL_GO_HIGH; PAUSE; PAUSE;
     SCL_GO_LOW; PAUSE; PAUSE;
   }
