@@ -34,6 +34,7 @@ SHA204_RANDOM = chr(0x1B)
 SHA204_READ = chr(0x02)
 SHA204_UPDATE_EXTRA = chr(0x20)
 SHA204_WRITE = chr(0x12)
+SHA204_SHA = chr(0x47)
 
 # firmware binary mode return codes
 BINARY_MODE_RETURN_CODES = {
@@ -282,6 +283,30 @@ def check_mac(challenge, mac, slot, serport):
         else:
             logging.info("Response: no match!");
             exit(1)
+
+def sha(message, serport):
+    if len(message) != 64:
+        logging.error("Something went wrong, the call to mac has wrong params!")
+        exit(1)
+    logging.debug("Calling the SHA command, message "+binascii.hexlify(message))
+    try:
+        response = do_transaction(REQUEST_IDLE+SHA204_SHA+chr(0)+b'\x00\x00', serport)
+    except TransactionError, e:
+        logging.error("ERROR communicating with firmware/ATSHA: " + str(e))
+        exit(1)
+    if response != chr(0):
+        logging.error("ERROR initialising SHA computation: " + str(e))
+        exit(1)
+    try:
+        response = do_transaction(REQUEST_SLEEP+SHA204_SHA+chr(1)+b'\x00\x00'+b'\x40'+message,serport)
+    except TransactionError, e:
+        logging.error("ERROR communicating with firmware/ATSHA: " + str(e))
+        exit(1)
+    else:
+        if len(response) != 32:
+            logging.error("Received an unexpected response from SHA command: "+binascii.hexlify(response))
+        else:
+            print("sha256 of message: "+binascii.hexlify(response))
 
 #######################
 ### Data processing ###
@@ -575,7 +600,7 @@ def check_mac_offline(challenge, mac, slot):
 # parse command-line arguments
 parser = argparse.ArgumentParser(description="Talk to ATSHA204 using sha204_playground firmware.",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("command", choices=['status', 'show_config', 'lock_config', 'lock_data', 'personalize', 'random',
+parser.add_argument("command", choices=['status', 'show_config', 'lock_config', 'lock_data', 'personalize', 'random', 'sha',
                                         'mac', 'check_mac', 'offline_mac'], help='Command')
 parser.add_argument('-n', '--dry-run', dest='dry_run', action='store_true', help="Do not do actual write or lock.")
 parser.add_argument('-c', '--config-file', dest='config_file', nargs='?', default='talk_to_sha204.ini',
@@ -590,6 +615,7 @@ parser.add_argument('--random-keys', dest='random_keys', action='store_true',
 parser.add_argument('-f', '--file', dest='file', nargs='?', help="Path to file to be used for MAC. Uses stdin if no file given.")
 parser.add_argument('-m', '--mac', dest='mac', nargs='?', help="MAC to be checked; for check_mac or offline_mac.")
 parser.add_argument('-C', '--challenge', dest='challenge', nargs='?', help="SHA256 of data (challenge) for check_mac or offline_mac.")
+parser.add_argument('-S', '--sha-message', dest='sha_message', nargs='?', help="Message to be hashed with SHA, <=64 bytes (will be padded with 0).")
 parser.add_argument('-V', '--verbosity', dest='verbosity', nargs='?', default='error',
                     choices=['error', 'warning', 'info', 'debug'], help="Verbosity level.")
 args = parser.parse_args()  # args are used as a global variable
@@ -684,7 +710,16 @@ elif args.command == 'check_mac':
         exit(1)
     else:
         check_mac(checkmac_challenge, checkmac_mac, MAC_SLOT, ser_port)
-
+elif args.command == 'sha':
+    try:
+        sha_message = binascii.unhexlify(args.sha_message)
+        if len(sha_message) > 64:
+            raise TypeError("Incorrect length (should be at most 64 bytes / 128 hex chars).")
+    except TypeError, e:
+        logging.error("Problem processing --sha-message parameter: "+str(e))
+        exit(1)
+    else:
+        sha(sha_message.ljust(64,'\x00'), ser_port)
 
 
 exit(0)
