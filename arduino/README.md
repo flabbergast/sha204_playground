@@ -5,9 +5,10 @@
 Copy the `avr/SHA204` library to your Arduino IDE's `libraries` folder,
 and copy the sketch `sha204_playground.ino` to your sketchbook.
 
-Make the modifications to the library file
-`SHA204/SHA204SWI_hardware_config.h` to match your hardware setup (i.e.
-to which pin is your ATSHA204 connected to).
+Choose Single-wire (SWI) or I2C (TWI) interface at the beginning of the
+sketch. The SWI will probably need some extra modifications to the
+library file `SHA204/SHA204SWI_hardware_config.h` to match your hardware
+setup (i.e.  to which pin is your ATSHA204 connected to).
 
 Compile and upload the sketch to your Arduino using IDE. Open the IDE's
 Serial Monitor to talk to the Arduino/ATSHA204.
@@ -18,10 +19,10 @@ Note that I've tested on Arduino IDE version 1.0.5.
 
 Arduino sets the size of the Serial buffer to 64. This seems to cause
 problems when the data sent to firmware is longer than that (which it is
-for instance with the `talk_to_sha204 check_mac` command). If things
-work, but you get a weird error with this command, increase the size of
-the Serial buffer. Unfortunately, this requires editing a file in the
-Arduino directory:
+for instance with the `talk_to_sha204 check_mac` or `talk_to_sha204 sha`
+commands). If things work, but you get a weird error with this command,
+increase the size of the Serial buffer. Unfortunately, this requires
+editing a file in the Arduino directory:
 `<ARDUINO_APP_DIR>/<MAYBE_SOME_MORE_DIRS/hardware/arduino/cores/arduino/HardwareSerial.cpp`,
 change `#define SERIAL_BUFFER_SIZE 64` to `#define SERIAL_BUFFER_SIZE
 100`.

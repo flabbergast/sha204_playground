@@ -8,9 +8,13 @@ with avr-gcc against the [LUFA] library.
 Get the [LUFA] library and copy the `LUFA` folder to the subdirectory
 `avr/LUFA`.
 
-Make modifications to match your hardware setup (`makefile` and
-`SHA204/SHA204SWI_hardware_config.h` are probably the most important
-ones).
+The SHA204 library supports both Single Wire interface and I2C interface
+(on mega's hardware I2C=TWI pins). Just select the interface at the
+beginning of `sha204_playground.cpp` file.
+
+Modifications to match your hardware setup are done mostly in `makefile`
+and `SHA204/SHA204SWI_hardware_config.h` or
+`SHA204/SHA204TWI_hardware_config.h`.
 
 Compile (`make`) and upload to your board with ATSHA204 (how to do this
 depends on your bootloader).
@@ -42,8 +46,9 @@ demonstration on how this is done, have a look at the python script
 - The subdirectory `SHA204` contains a re-usable library, working on
   both AVR8 and XMEGA architectures. Note that only 16MHz and 32MHz CPU
   speeds are tested.
-- At the moment, only Single-Wire Interface for ATSHA204 is implemented,
-  by bit-banging in C (so a speedy CPU is probably required).
+- At the moment, the Single-Wire Interface for ATSHA204 is implemented
+  by bit-banging in C (so a speedy CPU is probably required). I2C
+  interface uses hardware TWI module in (x)megas.
 - The firmware also enumerates as a Keyboard. This functionality is not
   used at the moment; see `LufaLayer.h` for the functions that can
   generate "keypresses".
