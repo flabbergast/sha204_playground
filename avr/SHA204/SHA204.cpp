@@ -382,6 +382,13 @@ uint8_t SHA204::execute(uint8_t op_code, uint8_t param1, uint16_t param2,
       response_size = WRITE_RSP_SIZE;
       break;
 
+    case SHA204_SHA:
+      poll_delay = SHA_DELAY;
+      poll_timeout = SHA_EXEC_MAX - SHA_DELAY;
+      response_size = (param1 & SHA_MODE_MASK)
+                ? SHA_RSP_SIZE_LONG : SHA_RSP_SIZE_SHORT;
+      break;
+
     default:
       poll_delay = 0;
       poll_timeout = SHA204_COMMAND_EXEC_MAX;

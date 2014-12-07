@@ -691,7 +691,7 @@ uint8_t binary_mode_transaction(uint8_t *data, uint8_t rxsize, uint8_t *rx_buffe
   uint8_t param1;
   uint16_t param2;
   uint8_t datalen1=0;
-  uint8_t data1[32];
+  uint8_t data1[64];
   uint8_t datalen2=0;
   uint8_t data2[32];
   uint8_t datalen3=0;
@@ -705,7 +705,7 @@ uint8_t binary_mode_transaction(uint8_t *data, uint8_t rxsize, uint8_t *rx_buffe
   param1 = data[3];
   param2 = data[4] + 256*data[5];
   if(len>5) {
-    if((datalen1=data[6]) > 32)
+    if((datalen1=data[6]) > 64)
       return BINARY_TRANSACTION_PARAM_ERROR;
     for(i=0; i<datalen1; i++)
       data1[i] = data[7+i];
